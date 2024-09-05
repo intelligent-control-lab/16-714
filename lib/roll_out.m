@@ -25,7 +25,7 @@ switch mode
             mode = 'ZOH';
         end
         for k = 1:varargin{1}
-            ulist(:,k) = u(xlist(:,k),k);
+            ulist(:,k) = u(xlist(:,k),tlist(k));
             xlist(:,k+1) = step(xlist(:,k), ulist(:,k), dt, dynamics,mode);
         end
         

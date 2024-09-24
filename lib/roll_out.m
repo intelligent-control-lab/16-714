@@ -17,16 +17,26 @@ switch mode
     case 'DT'
         dt = varargin{2};
         tlist = 0:dt:dt*varargin{1};
-        xlist = zeros(size(x0,1),length(tlist)); xlist(:,1) = x0; 
-        ulist = zeros(size(u(x0,1),1),length(tlist)-1);
+        xlist = zeros(size(x0,1),length(tlist)); xlist(:,1) = x0;
+        try
+            m = size(u(x0,1),1);
+        catch
+            error(['no solution for the initial state ',num2str(x0)]);
+        end
+        ulist = zeros(m,length(tlist)-1);
         if length(varargin)>2
             mode = varargin{3};
         else
-            mode = 'ZOH';
+            mode = 'Euler';
         end
         for k = 1:varargin{1}
-            ulist(:,k) = u(xlist(:,k),tlist(k));
-            xlist(:,k+1) = step(xlist(:,k), ulist(:,k), dt, dynamics,mode);
+            try 
+                ulist(:,k) = u(xlist(:,k),tlist(k));
+            catch
+                warning(['no solution at time step ',num2str(k)]);
+                ulist(:,k) = zeros(m,1);
+            end
+            xlist(:,k+1) = step(xlist(:,k), ulist(:,k), dt, dynamics, mode);
         end
         
 end

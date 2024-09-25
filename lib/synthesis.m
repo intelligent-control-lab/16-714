@@ -20,7 +20,7 @@ switch name
             K(:,:,i) = inv(sys.R + sys.B' * P(:,:,i+1) * sys.B) * sys.B' * P(:,:,i+1) * sys.A;
             P(:,:,i) = sys.Q + sys.A' * P(:,:,i+1) * sys.A - sys.A' * P(:,:,i+1) * sys.B * K(:,:,i);
         end
-        c.u = @(x,t) -K(:,:,t)*x;
+        c.u = @(x,t) -K(:,:,t/sys.dt+1)*x;
         c.K = K;
         c.P = P;
     case 'MPC' % non constrained linear quadratic MPC

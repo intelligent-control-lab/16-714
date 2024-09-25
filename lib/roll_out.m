@@ -25,18 +25,18 @@ switch mode
         end
         ulist = zeros(m,length(tlist)-1);
         if length(varargin)>2
-            mode = varargin{3};
+            simmode = varargin{3};
         else
-            mode = 'Euler';
+            simmode = 'Euler';
         end
         for k = 1:varargin{1}
-            try 
+            try
                 ulist(:,k) = u(xlist(:,k),tlist(k));
             catch
                 warning(['no solution at time step ',num2str(k)]);
                 ulist(:,k) = zeros(m,1);
             end
-            xlist(:,k+1) = step(xlist(:,k), ulist(:,k), dt, dynamics, mode);
+            xlist(:,k+1) = step(xlist(:,k), ulist(:,k), dt, dynamics, simmode);
         end
         
 end

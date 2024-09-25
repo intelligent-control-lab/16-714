@@ -2,7 +2,7 @@
 % Script for Lecture 9: MPC
 
 %% Specify problem
-problem = 1;
+problem = 2;
 switch problem
     case 1
         sys.dt = 0.5; % Sampling time
@@ -64,9 +64,9 @@ box on
 legend(string)
 %% Visualiza trajectory
 
-[~, x_lqr_f, ~] = roll_out(sys.name, cLQRn.u, sys.x0, 'DT', sys.N, sys.dt);
-[~, x_lqr_inf, ~] = roll_out(sys.name, cLQR.u, sys.x0, 'DT', sys.N, sys.dt);
-[~, x_lqr_mp, ~] = roll_out(sys.name, cMPC.u, sys.x0, 'DT', sys.N, sys.dt);
+[~, x_lqr_f, ~] = roll_out(sys.name, cLQRn.u, sys.x0, 'DT', sys.N, sys.dt, 'ZOH');
+[~, x_lqr_inf, ~] = roll_out(sys.name, cLQR.u, sys.x0, 'DT', sys.N, sys.dt, 'ZOH');
+[~, x_lqr_mp, ~] = roll_out(sys.name, cMPC.u, sys.x0, 'DT', sys.N, sys.dt, 'ZOH');
 
 figure; hold on
 plot(0:sys.N, x_lqr_f(1,:));
@@ -85,9 +85,9 @@ for i = 1:N
     c{i} = synthesis('MPC', sys);
 end
 % Simulate for 2*N horizon
-[~, x_lqr_inf, ~] = roll_out(sys.name, cLQR.u, sys.x0, 'DT', 2*sys.N, sys.dt);
+[~, x_lqr_inf, ~] = roll_out(sys.name, cLQR.u, sys.x0, 'DT', 2*sys.N, sys.dt, 'ZOH');
 for i = 1:N
-    [~, x_lqr_mps(:,:,i), ~] = roll_out(sys.name, c{i}.u, sys.x0, 'DT', 2*sys.N, sys.dt);
+    [~, x_lqr_mps(:,:,i), ~] = roll_out(sys.name, c{i}.u, sys.x0, 'DT', 2*sys.N, sys.dt, 'ZOH');
 end
 % Visualize
 figure; hold on
@@ -104,9 +104,9 @@ legend(string)
 %% Predicted Output at Each MPC Step
 % Essentially at every time step, a finite horizon LQR is solved.
 x_lqr_mp_steps = zeros(length(sys.x0), sys.N+1, sys.N+1);
-[~, x_lqr_mp_steps(:,:,1), ~] = roll_out(sys.name, cLQRn.u, sys.x0, 'DT', sys.N, sys.dt);
+[~, x_lqr_mp_steps(:,:,1), ~] = roll_out(sys.name, cLQRn.u, sys.x0, 'DT', sys.N, sys.dt, 'ZOH');
 for t = 1:sys.N
-    [~, x_lqr_mp_steps(:,:,t+1), ~] = roll_out(sys.name, cLQRn.u, x_lqr_mp_steps(:,2,t), 'DT', sys.N, sys.dt);
+    [~, x_lqr_mp_steps(:,:,t+1), ~] = roll_out(sys.name, cLQRn.u, x_lqr_mp_steps(:,2,t), 'DT', sys.N, sys.dt, 'ZOH');
 end
 
 figure; hold on

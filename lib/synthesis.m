@@ -23,8 +23,8 @@ switch name
         c.u = @(x,t) -K(:,:,t/sys.dt+1)*x;
         c.K = K;
         c.P = P;
-    case 'MPC' % non constrained linear quadratic MPC
-        c.name = 'MPC';
+    case 'nMPC' % unconstrained linear quadratic MPC
+        c.name = 'nMPC';
         nx = length(sys.x0); nu = size(sys.B,2);
         P = zeros(nx, nx, sys.N+1);
         P(:,:,sys.N+1) = sys.S;
@@ -36,8 +36,8 @@ switch name
         c.u = @(x,t) -K(:,:,1)*x;
         c.K = K;
         c.P = P;
-    case 'MPCxu' % control constrained linear quadratic MPC
-        c.name = 'MPCxu';
+    case 'uMPC' % control constrained linear quadratic MPC
+        c.name = 'uMPC';
         nx = length(sys.x0); nu = size(sys.B,2);
         P = zeros(nx, nx, sys.N+1);
         P(:,:,sys.N+1) = sys.S;
@@ -68,9 +68,13 @@ switch name
         QQ = bar_B'*bar_Q*bar_B + bar_R;
         AA = [bar_B;-bar_B;eye(sys.N);-eye(sys.N)];
         bb = @(x) [max_X - bar_A*x; -min_X + bar_A*x; max_U; -min_U];
+        if isfield(sys,'xterminal')
+            AA = [AA;[zeros(size(sys.xterminal.A,1),n*(sys.N)) sys.xterminal.A]*bar_B];
+            bb = @(x) [max_X - bar_A*x; -min_X + bar_A*x; max_U; -min_U; sys.xterminal.b - [zeros(size(sys.xterminal.A,1),n*(sys.N)) sys.xterminal.A]*bar_A*x];
+        end
         CC = @(x) (bar_A*x)'*bar_Q*bar_B;
         c.uref = @(x) quadprog(QQ, CC(x)', AA, bb(x)); % return all controls
-        c.xref = @(x) bar_A*x + bar_B*c.uref(x); %return all predicted states; note this implementation could be improved by only calling one quadprog
+        c.xref = @(x) bar_A*x + bar_B*c.uref(x); %return all predicted states;          note this implementation could be improved by only calling one quadprog
         c.u = @(x,t) get_first_u(c.uref, x, m);
 end
 end

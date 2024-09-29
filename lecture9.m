@@ -27,7 +27,7 @@ end
 %% Controllers
 cLQR = synthesis('LQR', sys);
 cLQRn = synthesis('LQRn', sys);
-cMPC = synthesis('MPC', sys);
+cMPC = synthesis('nMPC', sys);
 
 %% Compare the P matrices
 figure; hold on;
@@ -82,7 +82,7 @@ N = sys.N;
 % Set up N different controllers
 for i = 1:N
     sys.N = i;
-    c{i} = synthesis('MPC', sys);
+    c{i} = synthesis('nMPC', sys);
 end
 % Simulate for 2*N horizon
 [~, x_lqr_inf, ~] = roll_out(sys.name, cLQR.u, sys.x0, 'DT', 2*sys.N, sys.dt, 'ZOH');

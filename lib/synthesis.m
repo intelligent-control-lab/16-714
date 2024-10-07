@@ -74,12 +74,40 @@ switch name
         end
         CC = @(x) (bar_A*x)'*bar_Q*bar_B;
         c.uref = @(x) quadprog(QQ, CC(x)', AA, bb(x)); % return all controls
-        c.xref = @(x) bar_A*x + bar_B*c.uref(x); %return all predicted states;          note this implementation could be improved by only calling one quadprog
+        c.xref = @(x) bar_A*x + bar_B*c.uref(x); %return all predicted states; note this implementation could be improved by only calling one quadprog
         c.u = @(x,t) get_first_u(c.uref, x, m);
+    case 'ILCw' % Frequency demain MPC
+        % PS = P/(1+PC) = b / (a + b * C);
+        c.name = 'ICLw';
+        c.L.b = add(sys.a, conv(sys.b, -sys.c));
+        c.L.a = sys.b;
+        c.Q.b = [1]; c.Q.a = [1]; % Design Q to ensure robustness when there is noise
+        c.u = @(error, ffold) filter(c.Q.b, c.Q.a, ffold + iclfilter(c.L.b, c.L.a, error));
 end
 end
 
 function u = get_first_u(uref, x, m)
     ulist = uref(x);
     u = ulist(1:m);
+end
+
+% Note the difference between this filter and the original matlab filter
+% function is that this filter allows non-causal transformation
+function y = iclfilter(b, a, error) 
+    nshift = length(b) - length(a);
+    y = filter(b, a, error);
+    y(1:end-nshift) = y(nshift+1:end);
+end
+
+function c = add(a, b)
+n = max(length(a),length(b));
+c = zeros(n,1);
+for i = n:-1:1
+    if n-i < length(a)
+        c(i) = c(i) + a(end - n + i);
+    end
+    if n-i < length(b)
+        c(i) = c(i) + b(end - n + i);
+    end
+end
 end

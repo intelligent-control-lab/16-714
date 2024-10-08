@@ -53,11 +53,7 @@ switch name
         % Extended dynamics
         n = size(sys.A,1);
         m = size(sys.B,2);
-        bar_A = eye(n);bar_B = [];
-        for i=1:sys.N
-            bar_B = [zeros(n, i); [bar_A * sys.B bar_B]];
-            bar_A = [eye(n); bar_A * sys.A];
-        end
+        [bar_A, bar_B] = lift_dynamics(sys.A, sys.B, sys.N);
         % State and control constraints
         max_U = repmat(sys.umax, sys.N, 1); min_U = repmat(sys.umin, sys.N, 1);
         max_X = repmat(sys.xmax, sys.N+1, 1); min_X = repmat(sys.xmin, sys.N+1, 1);
@@ -76,13 +72,21 @@ switch name
         c.uref = @(x) quadprog(QQ, CC(x)', AA, bb(x)); % return all controls
         c.xref = @(x) bar_A*x + bar_B*c.uref(x); %return all predicted states; note this implementation could be improved by only calling one quadprog
         c.u = @(x,t) get_first_u(c.uref, x, m);
-    case 'ILCw' % Frequency demain MPC
+    case 'ILCw' % Frequency domain ILC
         % PS = P/(1+PC) = b / (a + b * C);
-        c.name = 'ICLw';
+        c.name = 'ILCw';
         c.L.b = add(sys.a, conv(sys.b, -sys.c));
         c.L.a = sys.b;
         c.Q.b = [1]; c.Q.a = [1]; % Design Q to ensure robustness when there is noise
         c.u = @(error, ffold) filter(c.Q.b, c.Q.a, ffold + iclfilter(c.L.b, c.L.a, error));
+    case 'ILCt' % Time domain ILC
+        c.name = 'ILCt';
+        Acl = sys.A - sys.B*sys.K; % get closed loop A matrix
+        [~, bar_B] = lift_dynamics(Acl, sys.B, sys.N);
+        clist = mat2cell(repmat(pinv(sys.C),1,sys.N+1)',ones(1,sys.N+1)); % assume single output
+        bar_inv_C = blkdiag(clist{:})';
+        c.L = pinv(bar_B) * bar_inv_C;
+        c.u = @(error, ffold) ffold + error * c.L';
 end
 end
 
@@ -109,5 +113,15 @@ for i = n:-1:1
     if n-i < length(b)
         c(i) = c(i) + b(end - n + i);
     end
+end
+end
+
+function [bar_A, bar_B] = lift_dynamics(A,B,N)
+n = size(A, 1);
+bar_A = eye(n);
+bar_B = [];
+for i=1:N
+    bar_B = [zeros(n, i); [bar_A * B bar_B]];
+    bar_A = [eye(n); bar_A * A];
 end
 end

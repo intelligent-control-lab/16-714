@@ -4,11 +4,17 @@
 % when mode is DT
 % varargin specifies 1) maximum simulation step; 2) dt; 3) discretization
 % mode (ZOH or Euler)
+%
+% dynamics could be a "string" or a "struct"
 
-function [tlist, xlist, ulist] = roll_out(dynamics, u, x0, mode, varargin)
+function [tlist, xlist, ulist, varargout] = roll_out(dynamics, u, x0, mode, varargin)
 switch mode
     case 'CT'
-        odefn = @(t,y) f(y,u(y,t),dynamics);
+        if isa(dynamics, 'string')
+            odefn = @(t,y) f(y,u(y,t),dynamics);
+        else
+            odefn = @(t,y) dynamics.f(y, u(y,t));
+        end
         opts = odeset('RelTol',1e-6,'AbsTol',1e-5);
         soln = ode45(odefn,[0,varargin{1}],x0,opts);
         tlist = soln.x;
@@ -38,5 +44,10 @@ switch mode
             end
             xlist(:,k+1) = step(xlist(:,k), ulist(:,k), dt, dynamics, simmode);
         end
-        
+        % Output measurement trajectory (need to improve the interface)
+        if simmode == 'Direct'
+            ylist = [];
+            for i = 1:size(xlist,2) ylist(:,i) = dynamics.h(xlist(:,i)); end
+            varargout{1} = ylist; 
+        end
 end

@@ -1,8 +1,9 @@
 function est = estimator(name, sys)
-est.xhat(:,1) = sys.x0hat;
-est.Z(:,:,1) = sys.X0;
 switch name
     case 'KF' % KF
+        % Initialize
+        est.xhat(:,1) = sys.x0hat;
+        est.Z(:,:,1) = sys.X0;
         % Update covariance
         M = @(Z) sys.A*Z*sys.A' + sys.Bw*sys.W*sys.Bw';
         est.update_Z = @(Z) M(Z) - M(Z)*sys.C'*inv(sys.V+sys.C*M(Z)*sys.C')*sys.C*M(Z);
@@ -12,6 +13,9 @@ switch name
         error = @(y,xhat,u) y - sys.C*xprior(xhat,u);
         est.update_x = @(xhat,u,y,Z) xprior(xhat, u) + est.KF_gain(Z) * error(y,xhat,u);
     case 'KFss' % Steady State KF
+        % Initialize
+        est.xhat(:,1) = sys.x0hat;
+        est.Z(:,:,1) = sys.X0;
         % Update covariance
         Ms = dare(sys.A', sys.C', sys.Bw*sys.W*sys.Bw', sys.V);
         est.update_Z = @(Z) Ms - Ms*sys.C'*inv(sys.V+sys.C*Ms*sys.C')*sys.C*Ms;
@@ -21,6 +25,9 @@ switch name
         error = @(y,xhat,u) y - sys.C*xprior(xhat,u);
         est.update_x = @(xhat,u,y,Z) xprior(xhat, u) + est.KF_gain * error(y,xhat,u);
     case 'EKF' % Note this function takes in an external linearization method
+        % Initialize
+        est.xhat(:,1) = sys.x0hat;
+        est.Z(:,:,1) = sys.X0;
         % Update covariance
         M = @(Z,xhat,u) sys.A(xhat,u)*Z*sys.A(xhat,u)' + sys.Bw*sys.W*sys.Bw';
         est.update_Z = @(Z,xhat,u) M(Z,xhat,u) - M(Z,xhat,u)*sys.C(xhat)'*inv(sys.C(xhat)*M(Z,xhat,u)*sys.C(xhat)'+sys.V)*sys.C(xhat)*M(Z,xhat,u);
@@ -30,6 +37,9 @@ switch name
         error = @(y,xhat,u) y - sys.hnominal(xhat);
         est.update_x = @(xhat,u,y,Z) xprior(xhat, u) + est.KF_gain(Z,xhat,u) * error(y,xhat,u);
     case 'UKF'
+        % Initialize
+        est.xhat(:,1) = sys.x0hat;
+        est.Z(:,:,1) = sys.X0;
         %Dynamic update
         xlist = @(xhat, Z, u) dynamic_update_sigma_points(xhat, Z, u, sys);
         xprior = @(xhat, Z, u) weighted_mean(xlist(xhat, Z, u));
@@ -45,6 +55,25 @@ switch name
         error = @(y,xhat,u,Z) y - yprior(xhat, Z, u);
         est.update_x = @(xhat,u,y,Z) xprior(xhat, Z, u) + est.KF_gain(Z,xhat,u) * error(y,xhat,u,Z);
         est.update_Z = @(Z,xhat,u) M(Z, xhat, u) - xyvar(xhat, Z, u) * inv(sys.V + yvar(xhat, Z, u)) * xyvar(xhat, Z, u)';
+    case 'RLS'
+        % Initialize
+        est.phat(:,1) = sys.p0hat;
+        est.H(:,:,1) = sys.H0;
+        % Update Hessian
+        G = @(x, phat) sys.grad(x, phat);
+        est.update_H = @(H, phat, x) sys.lambda * H + G(x, phat)' * G(x, phat);
+        % Update Estimate
+        yhat = @(phat, x) sys.fnominal(x,phat);
+        error = @(y, phat, x) y - yhat(phat, x);
+        est.update_p = @(phat, x, y, H) phat + inv(sys.lambda * H + G(x, phat)' * G(x, phat))*G(x, phat)'*error(y, phat, x);
+    case 'SGD'
+        % Initialize
+        est.phat(:,1) = sys.p0hat;
+        G = @(x, phat) sys.grad(x, phat);
+        % Update Estimate
+        yhat = @(phat, x) sys.fnominal(x,phat);
+        error = @(y, phat, x) y - yhat(phat, x);
+        est.update_p = @(phat, x, y) phat + inv(sys.H0)*G(x, phat)'*error(y, phat, x);
 end
 end
 

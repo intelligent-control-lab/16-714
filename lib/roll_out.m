@@ -45,7 +45,7 @@ switch mode
             xlist(:,k+1) = step(xlist(:,k), ulist(:,k), dt, dynamics, simmode);
         end
         % Output measurement trajectory (need to improve the interface)
-        if simmode == 'Direct'
+        if strcmp(simmode, 'Direct') && isfield(dynamics,'h')
             ylist = [];
             for i = 1:size(xlist,2) ylist(:,i) = dynamics.h(xlist(:,i)); end
             varargout{1} = ylist; 

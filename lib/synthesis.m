@@ -87,6 +87,8 @@ switch name
         bar_inv_C = blkdiag(clist{:})';
         c.L = pinv(bar_B) * bar_inv_C;
         c.u = @(error, ffold) ffold + error * c.L';
+    case 'MRACx' % Model reference adaptive control with full state feedback
+        c = MRAC(sys,'record');
 end
 end
 

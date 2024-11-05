@@ -25,7 +25,7 @@ switch mode
         tlist = 0:dt:dt*varargin{1};
         xlist = zeros(size(x0,1),length(tlist)); xlist(:,1) = x0;
         try
-            m = size(u(x0,1),1);
+            m = size(u(x0,0),1);
         catch
             error(['no solution for the initial state ',num2str(x0)]);
         end

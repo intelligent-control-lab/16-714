@@ -21,33 +21,58 @@ switch mode
         xlist = soln.y(:,:);
         for i = 1:length(tlist)-1 ulist(:,i) = u(xlist(:,i),tlist(i)); end
     case 'DT'
-        dt = varargin{2};
-        tlist = 0:dt:dt*varargin{1};
-        xlist = zeros(size(x0,1),length(tlist)); xlist(:,1) = x0;
+        dt = varargin{2};% Todo: remove dt for 'DIRECT' mode
+        if isnumeric(varargin{1})
+            kmax = varargin{1};
+            tlist = 0:dt:dt*varargin{1};
+            xlist = zeros(size(x0,1),length(tlist)); xlist(:,1) = x0;
+        else
+            kmax = 1000; % a default value
+            tcondition = varargin{1};
+            tlist = [0];
+            xlist = zeros(size(x0,1),1); xlist(:,1) = x0;
+        end
+        
         try
             m = size(u(x0,0),1);
         catch
             error(['no solution for the initial state ',num2str(x0)]);
         end
-        ulist = zeros(m,length(tlist)-1);
+        ulist = zeros(m,max(1,length(tlist)-1));
         if length(varargin)>2
             simmode = varargin{3};
         else
             simmode = 'Euler';
         end
-        for k = 1:varargin{1}
+        if strcmp(simmode, 'Direct') && isfield(dynamics,'h')
+                ylist = [];
+        end
+        for k = 1:kmax
             try
-                ulist(:,k) = u(xlist(:,k),tlist(k));
+                ulist(:,k) = u(xlist(:,k),tlist(k)); % note this function is called twice at k = 0
             catch
                 warning(['no solution at time step ',num2str(k)]);
                 ulist(:,k) = zeros(m,1);
             end
             xlist(:,k+1) = step(xlist(:,k), ulist(:,k), dt, dynamics, simmode);
+            if strcmp(simmode, 'Direct') && isfield(dynamics,'h')
+                try
+                    ylist(:,k) = dynamics.h(xlist(:,k),ulist(:,k)); 
+                catch
+                    ylist(:,k) = dynamics.h(xlist(:,k));
+                end
+            end
+            if ~isnumeric(varargin{1})
+                tlist = [tlist;tlist(end)+dt];
+                if tcondition(xlist(:,end), tlist(end))
+                    break;
+                end
+            end
         end
-        % Output measurement trajectory (need to improve the interface)
         if strcmp(simmode, 'Direct') && isfield(dynamics,'h')
-            ylist = [];
-            for i = 1:size(xlist,2) ylist(:,i) = dynamics.h(xlist(:,i)); end
-            varargout{1} = ylist; 
+            varargout{1} = ylist; % note we do not have y for the last x
         end
+end
+
+
 end

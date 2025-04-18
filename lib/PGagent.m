@@ -64,7 +64,7 @@ classdef PGagent < handle
                     k = 0; l_list = [];
                     while ~obj.tcondition(x, k/sys.dt)
                         u = obj.control(x,obj.theta.mu,obj.theta.sigma);u_list = [u_list u];
-                        xnew = sys.f(x, u); l = sys.h(x,u);
+                        xnew = callDynamicsF(sys.f, x, u, k/sys.dt); l = sys.h(x,u);
                         
                         d = l + sys.delta*obj.V(xnew,obj.W) - obj.V(x,obj.W);
                         D = obj.gradP(x,u,obj.theta.mu,obj.theta.sigma);

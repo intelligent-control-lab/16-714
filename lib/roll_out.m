@@ -47,6 +47,7 @@ switch mode
         if strcmp(simmode, 'Direct') && isfield(dynamics,'h')
                 ylist = [];
         end
+        dyn = dynamics;
         for k = 1:kmax
             try
                 ulist(:,k) = u(xlist(:,k),tlist(k)); % note this function is called twice at k = 0
@@ -54,7 +55,8 @@ switch mode
                 warning(['no solution at time step ',num2str(k)]);
                 ulist(:,k) = zeros(m,1);
             end
-            xlist(:,k+1) = step(xlist(:,k), ulist(:,k), dt, dynamics, simmode);
+            dyn.f = @(x,u) callDynamicsF(dynamics.f, x, u, k);
+            xlist(:,k+1) = step(xlist(:,k), ulist(:,k), dt, dyn, simmode);
             if strcmp(simmode, 'Direct') && isfield(dynamics,'h')
                 try
                     ylist(:,k) = dynamics.h(xlist(:,k),ulist(:,k)); 

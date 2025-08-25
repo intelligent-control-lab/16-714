@@ -53,7 +53,11 @@ function [tlist, xlist, ulist, log] = roll_out(model, ctrl, x0, sim, opts)
     x0 = x0(:);
 
     % Resolve model into a unified interface
-    dyn = resolve_dynamics(model);
+    if isstring(model) || ischar(model)
+        dyn = resolve_dynamics(model);
+    else
+        dyn = model;
+    end
 
     % Normalize controller
     [ctrl_mode, pi_handle] = normalize_controller(ctrl);

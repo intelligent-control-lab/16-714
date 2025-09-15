@@ -87,5 +87,12 @@ grid on; xlabel('Time (s)'); ylabel('State');
 title('States vs Time (CT solid, DT dots)');
 
 %% Alternative implementation via synthesis()
+sys.dt = 0; sys.A = Ac; sys.B = Bc; sys.Q = Q; sys.R = R;
+c1 = synthesis('LQR', sys);  
+simCT = struct('type','CT','T',Tmax,'integrator','ode45');
+[tlist_ct, xlist_ct, ulist_ct] = roll_out(dyn, c1.u, x0, simCT); 
+
 sys.dt = dt; sys.A = A; sys.B = B; sys.Q = Q; sys.R = R;
-c = synthesis('LQR', sys);  
+c2 = synthesis('LQR', sys);  
+simDT = struct('type','DT','K',Nsteps,'dt',dt,'integrator',sim_integrator);
+[tlist_dt, xlist_dt, ulist_dt] = roll_out(dyn, c2.u, x0, simDT); 

@@ -38,29 +38,24 @@ function dyn = resolve_dynamics(dynamics)
         error('Dynamics must provide CT RHS (.f_ct) or DT map (.f_dt).');
     end
 end
-
 % ========================================================================
 % Local helper: [A,B] = getAB_local(name, mode, opts)
-% - name: 'single_integrator' | 'double_integrator'
-% - mode: 'CT' | 'DT'  (char or string ok)
-% - opts: struct with fields:
+% - name: 'single_integrator' | 'double_integrator' | 'unicycle-3' | 'unicycle3' | 'unicycle'
+% - mode: 'CT' | 'DT'
+% - opts:
 %       .dim   (required, positive integer)
 %       .dt    (required for 'DT', positive)
 %       .dmode (optional, default 'ZOH'; supports 'ZOH','EULER')
+%       .x     (optional, state linearization point)
+%       .u     (optional, input linearization point)
 % ========================================================================
 function [A,B] = getAB_local(name, mode, opts)
-    % ---- Robust parsing (accept char or string) -------------------------
     if isstring(name), name = char(name); end
     if isstring(mode), mode = char(mode); end
 
-    % ---- Validate opts struct ------------------------------------------
-    if ~(isstruct(opts) && isfield(opts,'dim'))
-        error('getAB:opts', 'opts must be a struct with at least opts.dim.');
-    end
-    dim = opts.dim;
-    if ~(isscalar(dim) && dim>0 && mod(dim,1)==0)
-        error('getAB:dim', 'opts.dim must be a positive integer.');
-    end
+    % ---- Validate opts ----
+    mustBeStructWith(opts,'dim');
+    dim = opts.dim; mustBePosInt(dim);
 
     isCT = strcmpi(mode,'CT');
     isDT = strcmpi(mode,'DT');
@@ -69,29 +64,39 @@ function [A,B] = getAB_local(name, mode, opts)
     end
 
     if isDT
-        if ~isfield(opts,'dt') || ~(isscalar(opts.dt) && isfinite(opts.dt) && opts.dt>0)
-            error('getAB:dt', 'opts.dt must be provided and positive for DT mode.');
-        end
-        dt = opts.dt;
+        mustBeStructWith(opts,'dt');
+        dt = opts.dt; mustBePosScalar(dt);
         if isfield(opts,'dmode') && ~isempty(opts.dmode)
             dmode = upper(string(opts.dmode));
         else
             dmode = "ZOH";
         end
+    else
+        dt = NaN; dmode = "NA";
     end
 
-    switch lower(name)
+    % Optional linearization point (default zeros)
+    x = zeros(dim,1);
+    if isfield(opts,'x') && ~isempty(opts.x), x = opts.x(:); end
+    % Infer nu conservatively when not given
+    u = zeros(max(1,dim-1),1);
+    if isfield(opts,'u') && ~isempty(opts.u), u = opts.u(:); end
+
+    switch lower(strrep(name,'_','-'))
+        case 'single-integrator'
+        case 'singleintegrator'
         case 'single_integrator'
-            % xdot = u;  x in R^dim, u in R^dim
+            % xdot = u
             if isCT
                 A = zeros(dim, dim);
                 B = eye(dim, dim);
             else
-                % ZOH == Forward Euler here
                 A = eye(dim, dim);
                 B = dt * eye(dim, dim);
             end
 
+        case 'double-integrator'
+        case 'doubleintegrator'
         case 'double_integrator'
             % x = [p; v], dim = 2n, u in R^n
             n = dim/2;
@@ -126,9 +131,66 @@ function [A,B] = getAB_local(name, mode, opts)
                 end
             end
 
+        case {'unicycle-3','unicycle3','unicycle'}
+            % State x = [px; py; theta], Control u = [v; omega]
+            if dim ~= 3
+                error('getAB:dim', 'unicycle-3 expects dim=3; got dim=%d.', dim);
+            end
+            px = x(1); %#ok<NASGU> % not used in Jacobian
+            py = x(2); %#ok<NASGU>
+            th = x(3);
+            v  = u(1);
+            % Continuous-time model:
+            %  pxdot = v*cos(th)
+            %  pydot = v*sin(th)
+            %  thdot = omega
+            A_ct = [ 0, 0, -v*sin(th);
+                     0, 0,  v*cos(th);
+                     0, 0,  0 ];
+            B_ct = [ cos(th), 0;
+                     sin(th), 0;
+                     0,       1 ];
+
+            if isCT
+                A = A_ct;
+                B = B_ct;
+            else
+                switch char(dmode)
+                    case 'ZOH'
+                        % First-order exact for small dt (common in iLQR):
+                        % x_{k+1} ≈ x_k + dt * f_ct(x,u)
+                        A = eye(3) + dt*A_ct;
+                        B = dt * B_ct;
+                    case {'EULER','FORWARDEULER','FE'}
+                        A = eye(3) + dt*A_ct;
+                        B = dt * B_ct;
+                    otherwise
+                        warning('getAB:dmode','Unknown dmode="%s"; using Euler discretization.', char(dmode));
+                        A = eye(3) + dt*A_ct;
+                        B = dt * B_ct;
+                end
+            end
+
         otherwise
             warning('getAB:unknown','Unknown dynamics "%s"; returning zero A,B.', name);
             A = zeros(dim, dim);
-            B = zeros(dim, dim);
+            B = zeros(dim, max(1,dim-1));
+    end
+end
+
+% ---------- tiny validators ----------
+function mustBeStructWith(s, field)
+    if ~isstruct(s) || ~isfield(s,field)
+        error('getAB:opts','opts.%s is required.', field);
+    end
+end
+function mustBePosInt(v)
+    if ~(isscalar(v) && v>0 && mod(v,1)==0)
+        error('getAB:dim','opts.dim must be a positive integer.');
+    end
+end
+function mustBePosScalar(v)
+    if ~(isscalar(v) && isfinite(v) && v>0)
+        error('getAB:dt','opts.dt must be a positive scalar.');
     end
 end

@@ -83,9 +83,7 @@ function [A,B] = getAB_local(name, mode, opts)
     if isfield(opts,'u') && ~isempty(opts.u), u = opts.u(:); end
 
     switch lower(strrep(name,'_','-'))
-        case 'single-integrator'
-        case 'singleintegrator'
-        case 'single_integrator'
+        case {'single-integrator', 'singleintegrator', 'single_integrator'}
             % xdot = u
             if isCT
                 A = zeros(dim, dim);
@@ -95,9 +93,7 @@ function [A,B] = getAB_local(name, mode, opts)
                 B = dt * eye(dim, dim);
             end
 
-        case 'double-integrator'
-        case 'doubleintegrator'
-        case 'double_integrator'
+        case {'double-integrator', 'doubleintegrator', 'double_integrator'}
             % x = [p; v], dim = 2n, u in R^n
             n = dim/2;
             if mod(n,1) ~= 0

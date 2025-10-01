@@ -1,97 +1,120 @@
 % 16-714 Advanced Control for Robotics
-% Script for Lecture 13: ICL Time Domain
+% Script for Lecture 13: ILC Time Domain 
 
 %% Problem Specification
-sys.dt = 1; % Sampling time
+sys.dt   = 1;                       % Sampling time
 sys.name = 'double_integrator';
-[sys.A,sys.B] = getAB('double_integrator',2,'DT',sys.dt,'Euler');
+sys.N    = 100;
+
+% Use resolve_dynamics to obtain A,B (and keep for possible f_dt use)
+dyn = resolve_dynamics(sys.name);
+[sys.A, sys.B] = dyn.getAB('DT', struct('dim',2,'dt',sys.dt,'integrator','Euler'));
+
+% Plant TF (for ILC synthesis)
 sys.a = [1 -2 1];
 sys.b = [sys.dt];
-sys.C = [1 0]; % only measuring the position
+sys.C = [1 0];                      % measuring position
 sys.x0 = [0;0];
-sys.N = 100;
 
 % Reference signal
-ref = @(t) (sin(0.2*t));
+ref        = @(t) sin(0.2*t);
 simhorizon = sys.N;
-niter = 10;
-sigma = 0.02; % control disturbance; 0 if no disturbance
+niter      = 10;
+sigma      = 0;                  % control disturbance; 0 if no disturbance
 
 %% Specify feedback control
 kp = 0.1; kd = 0.5;
-sys.K = [kp kd]; % For time domain use
-sys.c = [-kd/sys.dt, kd/sys.dt - kp]; % for frequency domain use
-ufb = @(x,t) kp*(ref(t) - sys.C*x) + kd*((ref(t+sys.dt)-ref(t))/sys.dt - x(2)) + sigma * randn; % proportional error feedback
+sys.K = [kp kd];                    % (used by time-domain ILC synthesis if needed)
+sys.c = [-kd/sys.dt, kd/sys.dt - kp];  % (for freq-domain analysis)
+
+ufb = @(x,t) kp*(ref(t) - sys.C*x) + ...
+             kd*((ref(t+sys.dt)-ref(t))/sys.dt - x(2)) + ...
+             sigma * randn;
+
+%% New roll_out call (DT with struct)
+sim = struct('type','DT','K',simhorizon,'dt',sys.dt,'integrator','Euler');
 
 % First trajectory (Iteration 0)
-[tlist, x_fb, u_fb] = roll_out(sys.name, ufb, sys.x0, 'DT', simhorizon, sys.dt, 'Euler');
+[tlist, x_fb, u_fb] = roll_out(sys.name, ufb, sys.x0, sim);
 
-% Plot
-figure(1);clf;subplot(211); hold on
-plot(0:simhorizon,ref(tlist),'--')
-plot(0:simhorizon,x_fb(1,:),'k')
-subplot(212)
-plot(0:simhorizon-1,u_fb)
+% Plot iteration 0
+figure(1); clf;
+subplot(2,1,1); hold on; grid on;
+plot(tlist, ref(tlist), '--');
+plot(tlist, x_fb(1,:), 'k');
+xlabel('time (s)'); ylabel('position');
+title('Output'); xlim([tlist(1), tlist(end)]);
 
-%% Specify the learning gain
+subplot(2,1,2); hold on; grid on;
+plot(tlist(1:end-1), u_fb);
+xlabel('time (s)'); ylabel('input');
+title('Input'); xlim([tlist(1), tlist(end-1)]);
+
+%% Specify the learning gain (Time-domain ILC)
 cILCt = synthesis('ILCt', sys);
 
-%% ILC
-error = zeros(niter,simhorizon+1);
-ff = zeros(niter, simhorizon);
-e = zeros(1,niter);
-string = ["Reference", "Iter 0"];
+%% ILC loop
+error  = zeros(niter, simhorizon+1);
+ff     = zeros(niter, simhorizon);      % feedforward is defined on k = 0..K-1
+e      = zeros(1, niter);
+legstr = ["Reference", "Iter 0"];
+
 for i = 1:niter
+    % tracking error from previous rollout
     error(i,:) = ref(tlist) - x_fb(1,:);
-    % filter the error signal
+
+    % update FF using time-domain learning filter
     if i > 1
         ff(i,1:simhorizon) = cILCt.u(error(i,:), ff(i-1,1:simhorizon));
     else
-        ff(i,1:simhorizon) = cILCt.u(error(i,:), zeros(1,simhorizon));
+        ff(i,1:simhorizon) = cILCt.u(error(i,:), zeros(1, simhorizon));
     end
-    % Set the feedforward controller
-    uff = @(x,t) ff(i,t/sys.dt+1) + ufb(x,t);
-    % Simulate
-    [tlist, x_fb, u_fb] = roll_out(sys.name, uff, sys.x0, 'DT', simhorizon, sys.dt, 'Euler');
-    % plot
-    subplot(211); hold on
-    plot(0:simhorizon, x_fb(1,:), 'color',[i/niter,0,0])
-    xlim([0,simhorizon])
-    subplot(212); hold on
-    plot(0:simhorizon-1, u_fb,'color',[i/niter,0,0])
-    % Compute error norm
-    e(i) = norm(error(i,:));
-    string = [string,"Iter "+num2str(i)];
-end
-subplot(211);
-legend(string);title('Output')
-subplot(212);
-title('Input')
-figure(2);clf;
-plot(0:niter-1, e);
-title('Norm Error in Different ILC Iterations')
 
-%% Compare two different ILC versions by turning the learning transfer 
-% function from the frequency domain ILC into a matrix
+    % combined controller: FF(k) + FB(x,t); index FF by k = t/dt
+    uff = @(x,t) ff(i, round(t/sys.dt)+1) + ufb(x,t);
+
+    % rollout with updated controller
+    [tlist, x_fb, u_fb] = roll_out(sys.name, uff, sys.x0, sim);
+
+    % plots for iteration i
+    subplot(2,1,1);
+    plot(tlist, x_fb(1,:), 'Color', [i/niter, 0, 0]);
+    subplot(2,1,2);
+    plot(tlist(1:end-1), u_fb, 'Color', [i/niter, 0, 0]);
+
+    % error norm
+    e(i) = norm(error(i,:));
+    legstr = [legstr, "Iter " + num2str(i)];
+end
+
+subplot(2,1,1); legend(legstr, 'Location','best');
+
+figure(2); clf; grid on;
+plot(0:niter-1, e, 'o-');
+xlabel('ILC iteration'); ylabel('||e||_2');
+title('Norm Error across ILC Iterations');
+
+%% Compare time-domain ILC vs frequency-domain ILC (matrix form of L)
 cILCw = synthesis('ILCw', sys);
+
+% Build Toeplitz-like L from FIR b-coeffs of learning filter
 L_matrix_form = zeros(simhorizon, simhorizon+1);
 l = length(cILCw.L.b);
 for i = 1:simhorizon
     j = 0;
     while j < l && i + j <= simhorizon + 1
-        L_matrix_form(i,i+j) = cILCw.L.b(l-j);
-        j = j+1;
+        L_matrix_form(i, i+j) = cILCw.L.b(l-j);
+        j = j + 1;
     end
 end
+% Example check:
+% ff(1,1:simhorizon)' - L_matrix_form * error(1,:)'
 
-% To verify the L matrix is constructed correctly
-% ff(1,1:simhorizon)' -  L_matrix_form * error(1,:)'
+figure(10); clf;
+subplot(1,2,1);
+imagesc(cILCt.L); axis image; colorbar;
+title('L matrix (time-domain ILC)');
 
-figure(10);subplot(121)
-image((cILCt.L+1.5)*100)
-colorbar('XTickLabel',{'-1','0','1'},'XTick',[50,150,250])
-title('L matrix in the time domain ILC')
-subplot(122)
-image((L_matrix_form+1.5)*100)
-colorbar('XTickLabel',{'-1','0','1'},'XTick',[50,150,250])
-title('L matrix in the frequency domain ILC')
+subplot(1,2,2);
+imagesc(L_matrix_form); axis image; colorbar;
+title('L matrix (freq-domain ILC as matrix)');

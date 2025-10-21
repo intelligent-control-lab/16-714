@@ -42,11 +42,12 @@ function [tlist, xlist, ulist, log] = roll_out(model, ctrl, x0, sim, opts)
         ctrl
         x0 double {mustBeVector}
         sim struct
-        opts.sensor = []
-        opts.observer = []
-        opts.timevarying = []
-        opts.log_fields = {}
-        opts.verbose (1,1) logical = false
+        opts struct
+        %opts.sensor = []
+        %opts.observer = []
+        %opts.timevarying = []
+        %opts.log_fields = {}
+        %opts.verbose (1,1) logical = false
     end
 
     % Normalize initial state shape
@@ -106,8 +107,8 @@ function [tlist, xlist, ulist, log] = roll_out(model, ctrl, x0, sim, opts)
             dt = require_field(sim, 'dt', 'DT simulation requires sim.dt (step size).');
 
             integrator = lower(default_if_missing(sim, 'integrator', 'Euler'));
-            has_tv     = ~isempty(opts.timevarying) && isa(opts.timevarying, 'function_handle');
-            has_sens   = ~isempty(opts.sensor)     && isa(opts.sensor, 'function_handle');
+            has_tv     = isfield(opts, 'timevarying') && isa(opts.timevarying, 'function_handle');
+            has_sens   = isfield(opts, 'sensor')     && isa(opts.sensor, 'function_handle');
 
             % Initialize histories
             tlist      = zeros(1, K+1);
@@ -124,7 +125,7 @@ function [tlist, xlist, ulist, log] = roll_out(model, ctrl, x0, sim, opts)
             ulist = zeros(m, K);   % inputs u_0 ... u_{K-1}
 
             % Optional: observer
-            if ~isempty(opts.observer)
+            if isfield(opts, 'observer')
                 xhat  = opts.observer.xhat0(:);
                 obs_f = opts.observer.update;
                 if want_xhat, log.xhat = zeros(numel(xhat), K); end
@@ -152,6 +153,15 @@ function [tlist, xlist, ulist, log] = roll_out(model, ctrl, x0, sim, opts)
                 % Measurement
                 if strcmp(ctrl_mode,'state')
                     uk = pi_handle(xk, tk);
+                    if has_sens
+                        yk = opts.sensor(xk, uk, tk); % pass u_{k-1} if needed
+                    else
+                        yk = xk; % default measurement: identity
+                    end
+                    if want_y
+                        if isempty(log.y), log.y = zeros(numel(yk), K); end
+                        log.y(:,k+1) = yk;
+                    end
 
                 elseif strcmp(ctrl_mode,'measurement')
                     if has_sens

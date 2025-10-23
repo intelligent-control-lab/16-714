@@ -19,7 +19,7 @@ sys.x0hat = sys.x0 + randn * sqrt(sys.X0);
 
 % noise (scalar for this 1D example)
 sys.W = 0.01;       % process noise variance
-sys.V = 0.1;        % measurement noise variance
+sys.V = 0.01;        % measurement noise variance
 
 %% roll_out model (DT "Direct" map via step.m)
 % Provide a DT update for the 'direct' integrator. step() will call f_dt.
@@ -64,28 +64,28 @@ estss = estimator('KFss', sys);
 %% Filtering loop
 % roll_out gives y_k (not y_{k+1}), so we use:
 %   given (xhat_k, Z_k) and input u_k, measurement y_k -> compute (xhat_{k+1}, Z_{k+1})
-for k = 1:K
-    est.xhat(:,k+1)   = est.update_x(  est.xhat(:,k),   uk(k), yk(k),   est.Z(:,:,k));
+for k = 1:sys.N-1
+    est.xhat(:,k+1)   = est.update_x(  est.xhat(:,k),   ulist(k), log.y(k+1),   est.Z(:,:,k));
     est.Z(:,:,k+1)    = est.update_Z(  est.Z(:,:,k));
 
-    estss.xhat(:,k+1) = estss.update_x(estss.xhat(:,k), uk(k), yk(k), estss.Z(:,:,k));
+    estss.xhat(:,k+1) = estss.update_x(estss.xhat(:,k), ulist(k), log.y(k+1), estss.Z(:,:,k));
     estss.Z(:,:,k+1)  = estss.update_Z(estss.Z(:,:,k));
 end
 
 %% Error reports
 % Compare on time indices that exist for both signals
-fprintf('Measurement Error (||y - x||_2):        %g\n', norm(yk - xk(1:K)));
-fprintf('Estimation Error (KF,   ||xhat - x||):   %g\n', norm(est.xhat(:)  - xk(:)));
-fprintf('Estimation Error (KFss, ||xhat - x||):   %g\n', norm(estss.xhat(:) - xk(:)));
+fprintf('Measurement Error (||y - x||_2):        %g\n', norm(log.y - xlist(1:sys.N)));
+fprintf('Estimation Error (KF,   ||xhat - x||):   %g\n', norm(est.xhat(:)  - xlist(1:sys.N)));
+fprintf('Estimation Error (KFss, ||xhat - x||):   %g\n', norm(estss.xhat(:) - xlist(1:sys.N)));
 
 %% Plot estimates
 figure(1);
-plot(t, est.xhat,  'b',   'DisplayName','A posteriori xhat (KF)');
-plot(t, estss.xhat,'--b', 'DisplayName','A posteriori xhat (KFss)');
+plot(tlist(1:sys.N), est.xhat(1:sys.N),  'b',   'DisplayName','A posteriori xhat (KF)');
+plot(tlist(1:sys.N), estss.xhat(1:sys.N),'--b', 'DisplayName','A posteriori xhat (KFss)');
 legend('Location','best');
 
 %% Plot posterior variances (1D so these are scalars)
 figure(2); clf; hold on;
-plot(0:K, squeeze(est.Z),   'DisplayName','A posterior variance (KF)');
-plot(0:K, squeeze(estss.Z), 'DisplayName','A posterior variance (KFss)');
+plot(tlist(1:sys.N), squeeze(est.Z),   'DisplayName','A posterior variance (KF)');
+plot(tlist(1:sys.N), squeeze(estss.Z), 'DisplayName','A posterior variance (KFss)');
 xlabel('k'); ylabel('variance'); grid on; legend('Location','best');

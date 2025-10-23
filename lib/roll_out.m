@@ -42,13 +42,18 @@ function [tlist, xlist, ulist, log] = roll_out(model, ctrl, x0, sim, opts)
         ctrl
         x0 double {mustBeVector}
         sim struct
-        opts struct
-        %opts.sensor = []
-        %opts.observer = []
-        %opts.timevarying = []
-        %opts.log_fields = {}
-        %opts.verbose (1,1) logical = false
+        opts struct = struct()   % default empty struct when 4 args are passed
     end
+
+    % --- Normalize opts once: inject defaults for missing fields ---
+    defaults = struct( ...
+        'sensor',      [], ...
+        'observer',    struct(), ...   % struct('xhat0', [], 'update', [])
+        'timevarying', [], ...         % @(dyn,k,t)->dyn_k
+        'log_fields',  {{}}, ...
+        'verbose',     false );
+
+    opts = mergestruct(defaults, opts);  % <— see helper below
 
     % Normalize initial state shape
     x0 = x0(:);
@@ -125,7 +130,7 @@ function [tlist, xlist, ulist, log] = roll_out(model, ctrl, x0, sim, opts)
             ulist = zeros(m, K);   % inputs u_0 ... u_{K-1}
 
             % Optional: observer
-            if isfield(opts, 'observer')
+            if isfield(opts, 'observer') && isfield(opts.observer, 'xhat0')
                 xhat  = opts.observer.xhat0(:);
                 obs_f = opts.observer.update;
                 if want_xhat, log.xhat = zeros(numel(xhat), K); end
@@ -266,5 +271,14 @@ function val = default_if_missing(s, fname, default_val)
         val = default_val;
     else
         val = s.(fname);
+    end
+end
+
+function s = mergestruct(a,b)
+    s = a;
+    if ~isstruct(b), return; end
+    fn = fieldnames(b);
+    for i = 1:numel(fn)
+        s.(fn{i}) = b.(fn{i});
     end
 end

@@ -2,7 +2,7 @@
 % Script for Lecture 10: MPC Feasibility (strict bounds)
 % Requires: resolve_dynamics.m, roll_out.m, synthesis.m
 
-clear; close all; clc;
+clear; close all; 
 
 %% ========= Problem spec (define bounds in canonical vector form!) =========
 problem = 2;  % 1: single_integrator, 2: double_integrator

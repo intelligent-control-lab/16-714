@@ -7,7 +7,7 @@
 %     [tlist, xlist, ulist] = roll_out(name, ctrl, x0, simStruct)
 % - Assumes synthesis('LQR'|'LQRn'|'nMPC', sys) returns controllers with field .u
 
-clear; close all; clc;
+clear; close all;
 
 %% ========== Problem Spec ==========
 problem = 2;  % 1: single-integrator, 2: double-integrator

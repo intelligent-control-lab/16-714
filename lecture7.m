@@ -1,7 +1,7 @@
 % 16-714 Advanced Control for Robotics
 % Script for Lecture 7: LQR 
 
-clear; clc; close all;
+clear; close all;
 
 %% Problem Parameters
 dyn_name = 'double_integrator';       % key for resolve_dynamics

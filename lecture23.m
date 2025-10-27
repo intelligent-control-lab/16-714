@@ -3,7 +3,7 @@
 
 %% Problem Setup
 sys.A = 1; sys.B = 0.5;
-sys.f = @(x,u) sys.A*x + sys.B*u;
+sys.f_dt = @(x,u,t) sys.A*x + sys.B*u;
 sys.Q = 1; sys.R = 1;
 sys.h = @(x,u) (x'*sys.Q*x + u'*sys.R*u)/2;
 sys.tolerance = 0.01;
@@ -12,7 +12,16 @@ sys.tcondition = @(x,t) norm(x) < sys.tolerance || t > sys.kmax * sys.dt;
 
 %% LQR solution
 c = synthesis('LQR',sys);
-[~, x_lqr] = roll_out(sys, c.u, sys.x0, 'DT', sys.tcondition, sys.dt, 'Direct');
+
+simDT  = struct( ...
+    'type','DT', ...
+    'K',   sys.kmax, ...                 % nominal horizon steps
+    'dt',  sys.dt, ...
+    'integrator','Direct', ...
+    'stop', @(xk,tk,log) sys.tcondition(xk,tk) );  % early stop condition
+optsDT = struct(); 
+
+[~, x_lqr] = roll_out(sys, c.u, sys.x0, simDT, optsDT);
 
 %% Learning paramters
 sys.W0 = 3; sys.delta = 1;

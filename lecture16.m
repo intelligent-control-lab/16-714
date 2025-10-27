@@ -64,7 +64,7 @@ sim.integrator = 'Direct';   % your DT map is given directly by sys.f
 
 % (opts is optional; include it if you use any flags like time-varying)
 opts = struct();  
-opts.sensor     = @(x,u,t) sys.h(x);
+opts.sensor     = @(x,t) sys.h(x);
 opts.log_fields = {'y'};     % ask roll_out to record measurements y_k
 
 model.f_dt = @(x,u,dt) sys.f(x,u);

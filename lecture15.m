@@ -31,7 +31,7 @@ sys.fnominal = @(x,u)  sys.A*x + sys.B*u;
 ctrl = @(x,t) sin( t / (sys.N/2/pi) );
 
 %% Measurement model (logged inside roll_out)
-sensor = @(x,u,t) sys.C*x + sqrt(sys.V)*randn();
+sensor = @(x,t) sys.C*x + sqrt(sys.V)*randn();
 
 %% Simulation config (DT, direct)
 sim_cfg = struct('type','DT', 'K', sys.N, 'dt', sys.dt, 'integrator','Direct');

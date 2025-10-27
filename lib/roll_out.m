@@ -15,7 +15,7 @@ function [tlist, xlist, ulist, log] = roll_out(model, ctrl, x0, sim, opts)
 %   ctrl           : controller; either function handle u(x,t)  (state feedback),
 %                    or struct('mode','state'|'measurement'|'estimate','pi', @pi)
 %
-%   opts.sensor    : optional @(x,u,t)->y  (default: y=x if needed)
+%   opts.sensor    : optional @(x,t)->y  (default: y=x if needed)
 %   opts.observer  : optional struct with fields:
 %                      xhat0   : initial estimate (vector)
 %                      update  : @(xhat,u,y,t)->xhat_next
@@ -77,7 +77,7 @@ function [tlist, xlist, ulist, log] = roll_out(model, ctrl, x0, sim, opts)
         % =========================
         % Continuous-time simulation
         % =========================
-        case 'CT'
+        case 'CT' % Note measurement function and estimation function not supported yet
             T = require_field(sim, 'T', 'CT simulation requires sim.T (horizon in seconds).');
 
             % Tutorial-friendly constraint for clarity:
@@ -155,52 +155,33 @@ function [tlist, xlist, ulist, log] = roll_out(model, ctrl, x0, sim, opts)
                     dyn_k = dyn;
                 end
 
-                % Measurement
+                if has_sens
+                    yk = opts.sensor(xk, tk);
+                else
+                    yk = xk; % default measurement: identity
+                end
+                if want_y
+                    if isempty(log.y), log.y = zeros(numel(yk), K); end
+                    log.y(:,k+1) = yk;
+                end
+
                 if strcmp(ctrl_mode,'state')
                     uk = pi_handle(xk, tk);
-                    if has_sens
-                        yk = opts.sensor(xk, uk, tk); % pass u_{k-1} if needed
-                    else
-                        yk = xk; % default measurement: identity
-                    end
-                    if want_y
-                        if isempty(log.y), log.y = zeros(numel(yk), K); end
-                        log.y(:,k+1) = yk;
-                    end
-
                 elseif strcmp(ctrl_mode,'measurement')
-                    if has_sens
-                        yk = opts.sensor(xk, (k>0)*ulist(:,k) + 0, tk); % pass u_{k-1} if needed
-                    else
-                        yk = xk; % default measurement: identity
-                    end
-                    if want_y
-                        if isempty(log.y), log.y = zeros(numel(yk), K); end
-                        log.y(:,k+1) = yk;
-                    end
                     uk = pi_handle(yk, tk);
 
                 elseif strcmp(ctrl_mode,'estimate')
-                    % measurement
-                    if has_sens
-                        yk = opts.sensor(xk, (k>0)*ulist(:,k) + 0, tk);
-                    else
-                        yk = xk;
-                    end
-                    if want_y
-                        if isempty(log.y), log.y = zeros(numel(yk), K); end
-                        log.y(:,k+1) = yk;
-                    end
                     % observer update
                     if isempty(obs_f)
                         error('Estimate feedback requested but opts.observer.update is missing.');
                     end
-                    xhat = obs_f(xhat, (k>0)*ulist(:,k) + 0, yk, tk);
+                    if k > 0
+                        xhat = obs_f(xhat, ulist(:,k), yk, tk);
+                    end
                     if want_xhat
                         log.xhat(:,k+1) = xhat;
                     end
                     uk = pi_handle(xhat, tk);
-
                 else
                     error('Unknown ctrl mode "%s".', ctrl_mode);
                 end

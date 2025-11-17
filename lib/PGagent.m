@@ -60,7 +60,7 @@ classdef PGagent < handle
                         G = sum(l_list(k:end));
                         xk = x_list(:,k); uk = u_list(:,k);
                         d  = G - obj.V(xk,obj.W);
-                        dtheta = dtheta - alpha.p * G * obj.gradP(xk,uk,obj.theta.mu,obj.theta.sigma);
+                        dtheta = dtheta - alpha.p * d * obj.gradP(xk,uk,obj.theta.mu,obj.theta.sigma);
                         dW     = dW     + alpha.v * d * obj.gradV(xk);
                     end
                     obj.theta.mu    = obj.theta.mu    + dtheta(1:size(obj.theta.mu,1), :);

@@ -1,0 +1,8 @@
+# Generated validation and simulation outputs
+data/
+**/data/
+
+# Python cache files
+__pycache__/
+**/__pycache__/
+*.py[cod]

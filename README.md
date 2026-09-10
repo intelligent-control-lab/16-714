@@ -22,6 +22,7 @@ folder. Generated `results/` directories are ignored by git.
 ```text
 16-714/
   README.md
+  requirements.txt  # course-wide Python dependencies
   shared/
     artifacts.py
     control_pipeline.py
@@ -56,20 +57,11 @@ folder. Generated `results/` directories are ignored by git.
     config.py
     main.py
     results/
-  hw1/
+  hw*/               # assignment-specific student material
     README.md
-    problem.py
-    vehicle_models.py
-    unicycle_bicycle_helpers.py
-  hw2/
-    README.md
-    README_symbolic_solver.md
-    requirements.txt
-    problem_1.4.py
-    problem_1.5.py
-    problem_1.6.py
-    problem_1.7.py
-    problem_1.8.py
+    problem*.py
+    ...              # supplied helpers and assignment dependencies
+    results/         # generated and git-ignored
   scripts/
     generate_results.py
     validate_results.py
@@ -93,23 +85,15 @@ The root compatibility scripts and the former `lib/` implementations have been
 removed. `scripts/` and `unit_tests/` are tracked repository code because they
 define the reproducible generation and compatibility-validation workflow.
 
-## Homework 2
+## Homework
 
-The student scripts for Questions 1.4–1.8 are in [`hw2/`](hw2/README.md).
-They run independently of SPARK and MuJoCo with Python 3.10 or newer:
-
-```bash
-python -m pip install -r hw2/requirements.txt
-python hw2/problem_1.7.py
-python hw2/problem_1.8.py
-```
-
+Each `hwN/` folder contains its student scripts, supplied helpers, and a
+README with assignment-specific setup, commands, and implementation tasks.
 Complete the marked TODOs before running; an unfinished block raises
-`NotImplementedError`. Keep `problem_1.7.py` beside `problem_1.8.py`, which
-imports its shared functions. This is a student-only release: homework
-answers and reference outputs are not distributed here.
+`NotImplementedError`. Homework answers and reference outputs are not
+distributed here.
 
-## Dependencies for the other course examples
+## Dependencies
 
 Use a SPARK environment installed from the public upstream
 [intelligent-control-lab/spark](https://github.com/intelligent-control-lab/spark). The scripts
@@ -149,8 +133,8 @@ The SPARK checkout must include:
 - `FrequencyDomainILC`
 - `TimeDomainILC`
 
-The Python environment also needs `numpy`, `scipy`, `matplotlib`, and `osqp`.
-These are installed by SPARK's MuJoCo profile. HW2 additionally needs `sympy`.
+The course-wide Python dependencies are listed in `requirements.txt`,
+covering numerical computation, plotting, optimization, and symbolic algebra.
 CUDA PyTorch, Isaac, ROS, and hardware SDK packages are not required for the
 course examples.
 
@@ -163,7 +147,6 @@ git clone --branch main --single-branch https://github.com/intelligent-control-l
 cd spark
 ./install.sh --name spark_course --profile mujoco --dev
 conda activate spark_course
-python -m pip install sympy
 ```
 
 The course targets public SPARK `main`. Confirm the checkout with:
@@ -193,8 +176,16 @@ PY
 If the imports fail, install the SPARK packages from the SPARK checkout before
 running this repository.
 
-GitHub Actions installs the same public SPARK MuJoCo profile and SymPy, then
-runs the compatibility tests, result validation, and repository hygiene checks.
+From this course repository's root, install the course-wide dependencies:
+
+```bash
+cd /path/to/16-714
+python -m pip install -r requirements.txt
+```
+
+GitHub Actions installs the same public SPARK MuJoCo profile and course
+dependencies, then runs the compatibility tests, result validation, and
+repository hygiene checks.
 No additional repository-access token or private checkout is required, and
 checkout credentials are not persisted.
 
@@ -243,7 +234,7 @@ after activating the environment:
 mjpython -m lecture9 --viewer --show-simulation-info
 ```
 
-Headless numerical commands, including HW2, can still use `python`. See the
+Headless numerical commands can still use `python`. See the
 [MuJoCo viewer documentation](https://mujoco.readthedocs.io/en/stable/python.html#passive-viewer).
 
 Run the SPARK/course compatibility suite after installing SPARK or updating the

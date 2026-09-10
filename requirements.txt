@@ -1,0 +1,6 @@
+# Course-wide Python dependencies; install SPARK separately as described in README.md.
+numpy
+scipy
+matplotlib
+osqp
+sympy

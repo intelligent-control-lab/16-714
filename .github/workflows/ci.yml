@@ -37,8 +37,9 @@ jobs:
       - name: Install SPARK MuJoCo development profile
         run: ./spark/install.sh --env-manager venv --path "$GITHUB_WORKSPACE/.venv" --python 3.10 --profile mujoco --dev
 
-      - name: Install HW2 symbolic solver
-        run: ./.venv/bin/python -m pip install sympy
+      - name: Install course dependencies
+        working-directory: course
+        run: ../.venv/bin/python -m pip install -r requirements.txt
 
       - name: Run compatibility tests
         working-directory: course

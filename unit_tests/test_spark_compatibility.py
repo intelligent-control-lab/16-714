@@ -81,7 +81,9 @@ class SparkCompatibilityTests(unittest.TestCase):
         self.assertIn("repository: intelligent-control-lab/spark", workflow)
         self.assertIn("ref: main", workflow)
         self.assertIn("--python 3.10 --profile mujoco --dev", workflow)
-        self.assertIn("pip install sympy", workflow)
+        self.assertIn("Install course dependencies", workflow)
+        self.assertIn("pip install -r requirements.txt", workflow)
+        self.assertNotRegex(workflow.lower(), r"hw\d+|homework\s+\d+")
         self.assertIn("unittest discover -s unit_tests -v", workflow)
         self.assertIn("scripts.generate_results --all", workflow)
         self.assertIn("scripts.validate_results", workflow)
@@ -90,6 +92,26 @@ class SparkCompatibilityTests(unittest.TestCase):
         self.assertNotIn("if:", workflow)
         self.assertNotIn("actions/checkout@v4", workflow)
         self.assertNotIn("actions/setup-python@v5", workflow)
+
+    def test_course_setup_uses_shared_dependency_manifest(self):
+        root = Path(__file__).resolve().parents[1]
+        readme = (root / "README.md").read_text(encoding="utf-8")
+        self.assertIn("pip install -r requirements.txt", readme)
+        self.assertNotIn("hw2", readme.lower())
+        self.assertNotIn("homework 2", readme.lower())
+
+        def requirements(path):
+            return {
+                line.strip() for line in path.read_text(encoding="utf-8").splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            }
+
+        course_dependencies = requirements(root / "requirements.txt")
+        self.assertTrue({"numpy", "scipy", "matplotlib", "osqp", "sympy"}
+                        <= course_dependencies)
+        for manifest in root.glob("hw*/requirements.txt"):
+            with self.subTest(manifest=manifest.name):
+                self.assertTrue(requirements(manifest) <= course_dependencies)
 
 
 if __name__ == "__main__":

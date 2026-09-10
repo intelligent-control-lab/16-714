@@ -20,7 +20,7 @@ folder. Generated `results/` directories are ignored by git.
 ## Repository Layout
 
 ```text
-16714-spark/
+16-714/
   README.md
   shared/
     artifacts.py
@@ -59,9 +59,17 @@ folder. Generated `results/` directories are ignored by git.
   hw1/
     README.md
     problem.py
-    solution.py
     vehicle_models.py
     unicycle_bicycle_helpers.py
+  hw2/
+    README.md
+    README_symbolic_solver.md
+    requirements.txt
+    problem_1.4.py
+    problem_1.5.py
+    problem_1.6.py
+    problem_1.7.py
+    problem_1.8.py
   scripts/
     generate_results.py
     validate_results.py
@@ -85,10 +93,26 @@ The root compatibility scripts and the former `lib/` implementations have been
 removed. `scripts/` and `unit_tests/` are tracked repository code because they
 define the reproducible generation and compatibility-validation workflow.
 
-## Dependencies
+## Homework 2
 
-Use a SPARK environment installed from
-[YIFANSUN98/spark_dev](https://github.com/YIFANSUN98/spark_dev). The scripts
+The student scripts for Questions 1.4–1.8 are in [`hw2/`](hw2/README.md).
+They run independently of SPARK and MuJoCo with Python 3.10 or newer:
+
+```bash
+python -m pip install -r hw2/requirements.txt
+python hw2/problem_1.7.py
+python hw2/problem_1.8.py
+```
+
+Complete the marked TODOs before running; an unfinished block raises
+`NotImplementedError`. Keep `problem_1.7.py` beside `problem_1.8.py`, which
+imports its shared functions. This is a student-only release: homework
+answers and reference outputs are not distributed here.
+
+## Dependencies for the other course examples
+
+Use a SPARK environment installed from the public upstream
+[intelligent-control-lab/spark](https://github.com/intelligent-control-lab/spark). The scripts
 expect these imports to work:
 
 ```python
@@ -126,21 +150,23 @@ The SPARK checkout must include:
 - `TimeDomainILC`
 
 The Python environment also needs `numpy`, `scipy`, `matplotlib`, and `osqp`.
-These are installed by SPARK's MuJoCo profile. CUDA PyTorch, Isaac, ROS, and
-hardware SDK packages are not required for the course examples.
+These are installed by SPARK's MuJoCo profile. HW2 additionally needs `sympy`.
+CUDA PyTorch, Isaac, ROS, and hardware SDK packages are not required for the
+course examples.
 
 ## Install SPARK
 
-Clone SPARK master and install the MuJoCo development profile first:
+Clone public SPARK main and install the MuJoCo development profile first:
 
 ```bash
-git clone --branch master --single-branch https://github.com/YIFANSUN98/spark_dev.git
-cd spark_dev
+git clone --branch main --single-branch https://github.com/intelligent-control-lab/spark.git
+cd spark
 ./install.sh --name spark_course --profile mujoco --dev
 conda activate spark_course
+python -m pip install sympy
 ```
 
-The course targets SPARK `master`. Confirm the checkout with:
+The course targets public SPARK `main`. Confirm the checkout with:
 
 ```bash
 git branch --show-current
@@ -152,20 +178,6 @@ course code must not depend on a private course branch or copied SPARK source.
 
 If you already have a local SPARK checkout, run the same installer from that
 checkout instead.
-
-### Optional CI access to private SPARK
-
-No external secret is required for the default GitHub Actions run. It always
-performs the repository source and hygiene checks. Because the automatically
-generated `GITHUB_TOKEN` cannot clone the private sibling `spark_dev`
-repository, the workflow skips SPARK installation, compatibility tests, and
-result validation when no cross-repository credential is available.
-
-Full SPARK validation can be enabled later, without changing the workflow, by
-adding a fine-grained token with read-only **Contents** access to `spark_dev`
-as the Actions secret `SPARK_REPO_TOKEN`. Checkout credentials are never
-persisted. Local developers can continue to run the complete suite in an
-installed SPARK environment regardless of whether this optional secret exists.
 
 After activating the environment, confirm that SPARK imports correctly:
 
@@ -180,6 +192,11 @@ PY
 
 If the imports fail, install the SPARK packages from the SPARK checkout before
 running this repository.
+
+GitHub Actions installs the same public SPARK MuJoCo profile and SymPy, then
+runs the compatibility tests, result validation, and repository hygiene checks.
+No additional repository-access token or private checkout is required, and
+checkout credentials are not persisted.
 
 ## Repository Model
 
@@ -199,7 +216,7 @@ lecture folders can remain experiment entry points that depend on that package.
 Run from this repository root:
 
 ```bash
-cd /path/to/16714-spark
+cd /path/to/16-714
 conda activate spark_course
 python -m lecture12
 ```
@@ -217,24 +234,31 @@ python -m lecture9 --viewer --show-simulation-info
 python -m lecture10 --viewer --show-simulation-info
 ```
 
-Run a syntax check:
+On macOS, commands that open the MuJoCo viewer may need `mjpython` in place of
+`python`; the passive viewer requires rendering on the main thread.
+`mjpython` is included with MuJoCo and accepts the same arguments. For example,
+after activating the environment:
 
 ```bash
-python -m compileall -q .
+mjpython -m lecture9 --viewer --show-simulation-info
 ```
+
+Headless numerical commands, including HW2, can still use `python`. See the
+[MuJoCo viewer documentation](https://mujoco.readthedocs.io/en/stable/python.html#passive-viewer).
 
 Run the SPARK/course compatibility suite after installing SPARK or updating the
 SPARK checkout:
 
 ```bash
-python -m unittest discover -s unit_tests -v
-python -m scripts.validate_results
+python -B -m unittest discover -s unit_tests -v
+python -B -m scripts.generate_results --all
+python -B -m scripts.validate_results
 python scripts/check_repository.py
 ```
 
 The repository check performs a cache-free syntax pass and rejects generated
-metadata, obsolete compatibility scripts, missing Homework 1 release sources,
-and references to the retired course branch.
+metadata, obsolete compatibility scripts, missing homework release sources,
+instructor-only homework files, and references to the retired course branch.
 
 ## SPARK Robot Examples
 

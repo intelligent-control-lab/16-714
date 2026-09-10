@@ -2,7 +2,7 @@
 
 Homework 1 compares the future predicted by a four-state unicycle model with
 the trajectory produced by a six-state dynamic bicycle model. The released
-student entry point is `problem.py`; `solution.py` is the instructor reference.
+student entry point is `problem.py`. Complete its marked TODOs before running.
 
 The unicycle state and control are
 
@@ -35,21 +35,18 @@ python -m hw1.problem --model bicycle
 python -m hw1.problem --gain-study
 ```
 
-Run the instructor reference with the same interface:
-
-```bash
-python -m hw1.solution --model unicycle
-python -m hw1.solution --model bicycle
-python -m hw1.solution --gain-study
-```
-
 Add `--viewer --real-time --show-simulation-info` to either model command to
 replay its saved numerical trajectory in the SPARK MuJoCo viewer. Results are
 written under `hw1/results/`. The locally assembled distribution package is
 written under `hw1/release/`; both directories are reproducible and ignored by
 Git.
 
+On macOS, viewer commands use `mjpython` instead of `python`, for example
+`mjpython -m hw1.problem --model unicycle --viewer --real-time`.
+The launcher is included with MuJoCo. Headless commands keep using `python`.
+See the [macOS viewer note](../README.md#run-examples).
+
 The model transitions are provided in `vehicle_models.py`. Plotting, CSV
 output, numerical rollout, and viewer replay helpers are isolated in
-`unicycle_bicycle_helpers.py`, keeping both assignment entry scripts below 200
+`unicycle_bicycle_helpers.py`, keeping the assignment entry script below 200
 lines.

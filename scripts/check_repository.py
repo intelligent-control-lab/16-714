@@ -17,9 +17,10 @@ OBSOLETE_ROOT_FILES = {
 }
 
 
-def tracked_files() -> tuple[Path, ...]:
+def release_files() -> tuple[Path, ...]:
+    """Include new release files while excluding ignored local artifacts."""
     output = subprocess.run(
-        ["git", "ls-files", "-z"],
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
         cwd=ROOT,
         check=True,
         capture_output=True,
@@ -30,18 +31,22 @@ def tracked_files() -> tuple[Path, ...]:
 def main() -> int:
     errors: list[str] = []
 
-    for path in ROOT.rglob("*"):
-        if ".git" in path.parts or not path.is_dir():
-            continue
-        if path.name in CACHE_NAMES or path.name.endswith(".egg-info"):
-            errors.append(f"local cache/build metadata remains: {path.relative_to(ROOT)}")
-
-    for path in tracked_files():
+    files = release_files()
+    for path in files:
         relative = path.relative_to(ROOT)
         if path.suffix in {".pyc", ".pyo", ".log"}:
             errors.append(f"generated file is tracked: {relative}")
         if any(part in CACHE_NAMES or part.endswith(".egg-info") for part in relative.parts):
             errors.append(f"generated directory is tracked: {relative}")
+        if relative.parts[0].startswith(("hw", "lecture")) and any(
+            part in {"results", "release"} for part in relative.parts[1:]
+        ):
+            errors.append(f"generated output is included in the release: {relative}")
+        if relative.parts[0].startswith("hw") and (
+            path.name.startswith(("solution", "answer", "instructor"))
+            or any(part in {"soln", "grad"} for part in relative.parts[1:])
+        ):
+            errors.append(f"instructor-only homework file in the release: {relative}")
 
     for filename in OBSOLETE_ROOT_FILES:
         if (ROOT / filename).exists():
@@ -53,20 +58,26 @@ def main() -> int:
     homework_sources = (
         "README.md",
         "problem.py",
-        "solution.py",
         "vehicle_models.py",
         "unicycle_bicycle_helpers.py",
     )
     for filename in homework_sources:
         if not (homework / filename).is_file():
             errors.append(f"missing Homework 1 source: hw1/{filename}")
-    for filename in ("problem.py", "solution.py"):
+    for filename in ("problem.py",):
         path = homework / filename
         if path.is_file() and len(path.read_text(encoding="utf-8").splitlines()) > 200:
             errors.append(f"Homework 1 entry script exceeds 200 lines: hw1/{filename}")
 
-    for path in ROOT.rglob("*.py"):
-        if ".git" in path.parts:
+    for filename in (
+        "README.md", "README_symbolic_solver.md", "requirements.txt",
+        *(f"problem_1.{number}.py" for number in range(4, 9)),
+    ):
+        if not (ROOT / "hw2" / filename).is_file():
+            errors.append(f"missing Homework 2 source: hw2/{filename}")
+
+    for path in files:
+        if path.suffix != ".py" or not path.is_file():
             continue
         try:
             compile(path.read_text(encoding="utf-8"), str(path), "exec")

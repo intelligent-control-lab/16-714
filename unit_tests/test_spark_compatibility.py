@@ -72,16 +72,22 @@ class SparkCompatibilityTests(unittest.TestCase):
             atol=1e-10,
         )
 
-    def test_ci_uses_node24_actions_and_optional_spark_checks(self):
+    def test_ci_uses_public_spark_and_unconditional_checks(self):
         workflow = (
             Path(__file__).resolve().parents[1] / ".github/workflows/ci.yml"
         ).read_text(encoding="utf-8")
         self.assertEqual(workflow.count("actions/checkout@v6"), 2)
         self.assertIn("actions/setup-python@v6", workflow)
-        self.assertIn("secrets.SPARK_REPO_TOKEN", workflow)
-        self.assertIn("id: spark-access", workflow)
-        self.assertIn("SPARK checks skipped", workflow)
-        self.assertIn("if: steps.spark-access.outputs.available == 'true'", workflow)
+        self.assertIn("repository: intelligent-control-lab/spark", workflow)
+        self.assertIn("ref: main", workflow)
+        self.assertIn("--python 3.10 --profile mujoco --dev", workflow)
+        self.assertIn("pip install sympy", workflow)
+        self.assertIn("unittest discover -s unit_tests -v", workflow)
+        self.assertIn("scripts.generate_results --all", workflow)
+        self.assertIn("scripts.validate_results", workflow)
+        self.assertNotIn("secrets.", workflow)
+        self.assertNotIn("github.repository_owner", workflow)
+        self.assertNotIn("if:", workflow)
         self.assertNotIn("actions/checkout@v4", workflow)
         self.assertNotIn("actions/setup-python@v5", workflow)
 

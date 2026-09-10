@@ -1,0 +1,55 @@
+name: Course compatibility
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Check out course examples
+        uses: actions/checkout@v6
+        with:
+          path: course
+          persist-credentials: false
+
+      - name: Check out public SPARK main
+        uses: actions/checkout@v6
+        with:
+          repository: intelligent-control-lab/spark
+          ref: main
+          path: spark
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install SPARK MuJoCo development profile
+        run: ./spark/install.sh --env-manager venv --path "$GITHUB_WORKSPACE/.venv" --python 3.10 --profile mujoco --dev
+
+      - name: Install HW2 symbolic solver
+        run: ./.venv/bin/python -m pip install sympy
+
+      - name: Run compatibility tests
+        working-directory: course
+        run: ../.venv/bin/python -m unittest discover -s unit_tests -v
+
+      - name: Generate and validate deterministic summaries
+        working-directory: course
+        run: |
+          ../.venv/bin/python -m scripts.generate_results --all
+          ../.venv/bin/python -m scripts.validate_results
+
+      - name: Check repository hygiene
+        working-directory: course
+        run: python3 scripts/check_repository.py

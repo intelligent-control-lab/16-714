@@ -1,0 +1,5 @@
+# Standalone HW3 numerical dependencies; SPARK is not required.
+numpy
+scipy
+matplotlib
+osqp
